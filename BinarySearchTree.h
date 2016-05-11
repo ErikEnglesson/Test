@@ -25,6 +25,7 @@ public:
     {
         forEachRecursive( m_root->getLeftChild(), f );
         return f;
+
     }
 
 private:
