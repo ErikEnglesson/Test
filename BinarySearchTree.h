@@ -1,8 +1,9 @@
 #ifndef BINARYSEARCHTREE_H
 #define BINARYSEARCHTREE_H
 
-#include "BinaryNode.h"
 #include <iostream>
+#include "BinaryNode.h"
+
 
 template<class T>
 class BinarySearchTree
