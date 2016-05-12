@@ -17,60 +17,60 @@ class DAG
 public:
     DAG(){}
 
-    /// Add node to DAG
-    uint32_t addNode( const T& node )
+    /// Add vertex to DAG
+    uint32_t addVertex( const T& vertex )
     {
-        nodes.push_back( node );
-        return nodes.size()-1;
+        vertices.push_back( vertex );
+        return vertices.size()-1;
     }
 
-    /// Sets connection weight: nodeIdFrom -> nodeIdTo = weight
-    void setConnectionWeight( uint32_t nodeIdFrom, uint32_t nodeIdTo, double weight )
+    /// Sets connection weight: vertexIdFrom -> vertexIdTo = weight
+    void setEdgeWeight( uint32_t vertexIdFrom, uint32_t vertexIdTo, double weight )
     {
-        assert( nodeIdFrom != nodeIdTo && "Connection between same node!" );
-        Connection c1( nodeIdFrom, nodeIdTo, weight );
-        auto iter = connections.find( c1 );
-        if( iter == connections.end() )
+        assert( vertexIdFrom != vertexIdTo && "Edge between same vertex!" );
+        Edge c1( vertexIdFrom, vertexIdTo, weight );
+        auto iter = edges.find( c1 );
+        if( iter == edges.end() )
         {
-            //Connection does not exist => create
-            connections.insert( c1 );
+            //Edge does not exist => create
+            edges.insert( c1 );
         }
         else
         {
-            //Connection exists already so change weight
+            //Edge exists already so change weight
             iter->weight = weight; //Changing const ref here
         }
     }
 
-    /// Sets the connection weights between nodeIdFrom <-> nodeIdTo = weight
-    void setSymmetricConnectionWeights( uint32_t nodeIdFrom, uint32_t nodeIdTo, double weight )
+    /// Sets the connection weights between vertexIdFrom <-> vertexIdTo = weight
+    void setSymmetricEdgeWeights( uint32_t vertexIdFrom, uint32_t vertexIdTo, double weight )
     {
-        assert( nodeIdFrom != nodeIdTo && "Connection between same node!" );
-        setConnectionWeight( nodeIdFrom, nodeIdTo, weight );
-        setConnectionWeight( nodeIdTo, nodeIdFrom, weight );
+        assert( vertexIdFrom != vertexIdTo && "Edge between same vertex!" );
+        setEdgeWeight( vertexIdFrom, vertexIdTo, weight );
+        setEdgeWeight( vertexIdTo, vertexIdFrom, weight );
     }
 
     /// Prints the connection matrix
-    void printConnections() const
+    void printEdges() const
     {
         typedef Eigen::SparseMatrix<double> SparseMatrix;
-        SparseMatrix m( nodes.size(), nodes.size() );
-        for( auto iter = connections.begin(); iter != connections.end(); ++iter )
+        SparseMatrix m( vertices.size(), vertices.size() );
+        for( auto iter = edges.begin(); iter != edges.end(); ++iter )
         {
-            uint32_t row = iter->nodeIdFrom;
-            uint32_t col = iter->nodeIdTo;
+            uint32_t row = iter->vertexIdFrom;
+            uint32_t col = iter->vertexIdTo;
             m.coeffRef( row, col ) = iter->weight;
         }
 
-        std::cout << "Connections: \n" << m << std::endl;
+        std::cout << "Edges: \n" << m << std::endl;
     }
 
     /// Returns 0 if no connection
-    double getConnectionWeight( uint32_t nodeIdFrom, uint32_t nodeIdTo ) const
+    double getEdgeWeight( uint32_t vertexIdFrom, uint32_t vertexIdTo ) const
     {
         //Comparison does not care about weight so does not matter what weight I use here
-        auto iter = connections.find( Connection( nodeIdFrom, nodeIdTo, 0.0 ) );
-        if( iter == connections.end() )
+        auto iter = edges.find( Edge( vertexIdFrom, vertexIdTo, 0.0 ) );
+        if( iter == edges.end() )
         {
             return 0.0;
         }
@@ -80,48 +80,48 @@ public:
         }
     }
 
-    uint32_t numConnections() const
+    uint32_t numEdges() const
     {
-        return connections.size();
+        return edges.size();
     }
 
     //Using "potensmetoden" and skipping weights
     vector<double> calculatePageRankings( uint32_t nIterations ) const
     {
-        //Set up matrix with connections with unit weights
-        vector<uint32_t> nConnectionsOut( nodes.size(), 0 );
-        for( auto iter = connections.begin(); iter != connections.end(); ++iter )
+        //Set up matrix with edges with unit weights
+        vector<uint32_t> nEdgesOut( vertices.size(), 0 );
+        for( auto iter = edges.begin(); iter != edges.end(); ++iter )
         {
-            uint32_t row = iter->nodeIdFrom;
-            nConnectionsOut[row]++;
+            uint32_t row = iter->vertexIdFrom;
+            nEdgesOut[row]++;
         }
 
-        vector<double> lamdaWeights( nodes.size(), 0.0 );
+        vector<double> lamdaWeights( vertices.size(), 0.0 );
 
-        for( uint32_t i = 0; i < nodes.size(); ++i )
+        for( uint32_t i = 0; i < vertices.size(); ++i )
         {
-            uint32_t nOutgoingConnections = nConnectionsOut[i];
-            if( nOutgoingConnections == 0 )
+            uint32_t nOutgoingEdges = nEdgesOut[i];
+            if( nOutgoingEdges == 0 )
             {
                 lamdaWeights[i] = 0;
             }
             else
             {
-                lamdaWeights[i] = 1.0 / double( nOutgoingConnections );
+                lamdaWeights[i] = 1.0 / double( nOutgoingEdges );
             }
         }
 
 
         //Create H matrix
         typedef Eigen::SparseMatrix<double> SparseMatrix;
-        SparseMatrix H( nodes.size(), nodes.size() );
-        for( auto iter = connections.begin(); iter != connections.end(); ++iter )
+        SparseMatrix H( vertices.size(), vertices.size() );
+        for( auto iter = edges.begin(); iter != edges.end(); ++iter )
         {
-            //Connection between nodeIdFrom -> nodeIdTo
+            //Edge between vertexIdFrom -> vertexIdTo
 
-            //Each row specifies which nodes points TO the the node with id = row
-            uint32_t row = iter->nodeIdTo;
-            uint32_t col = iter->nodeIdFrom;
+            //Each row specifies which vertices points TO the the vertex with id = row
+            uint32_t row = iter->vertexIdTo;
+            uint32_t col = iter->vertexIdFrom;
 
             H.coeffRef( row, col ) = lamdaWeights[col];
         }
@@ -129,10 +129,10 @@ public:
         std::cout << "H: \n" << H << std::endl;
 
         //Initial guess
-        Eigen::VectorXd eigenVec( nodes.size() );
+        Eigen::VectorXd eigenVec( vertices.size() );
 
-        double value = 1.0 / double( nodes.size() );
-        for( uint32_t i = 0; i < nodes.size(); ++i )
+        double value = 1.0 / double( vertices.size() );
+        for( uint32_t i = 0; i < vertices.size(); ++i )
         {
             eigenVec[i] = value;
         }
@@ -142,8 +142,8 @@ public:
             eigenVec = H*eigenVec;
         }
 
-        std::vector<double> result( nodes.size() );
-        for( uint32_t i = 0; i < nodes.size(); ++i )
+        std::vector<double> result( vertices.size() );
+        for( uint32_t i = 0; i < vertices.size(); ++i )
         {
             result[i] = eigenVec[i];
         }
@@ -153,25 +153,25 @@ public:
 
 private:
 
-    struct Connection
+    struct Edge
     {
-        Connection( uint32_t n1, uint32_t n2, double w ): nodeIdFrom( n1 ), nodeIdTo( n2 ), weight( w ) {}
+        Edge( uint32_t n1, uint32_t n2, double w ): vertexIdFrom( n1 ), vertexIdTo( n2 ), weight( w ) {}
 
-        uint32_t nodeIdFrom;
-        uint32_t nodeIdTo;
-        mutable double weight; //Mutable so it can be changed in setConnectionWeight
+        uint32_t vertexIdFrom;
+        uint32_t vertexIdTo;
+        mutable double weight; //Mutable so it can be changed in setEdgeWeight
     };
 
-    vector<T> nodes;
+    vector<T> vertices;
 
     struct classcomp {
-      bool operator() (const Connection& lhs, const Connection& rhs) const
+      bool operator() (const Edge& lhs, const Edge& rhs) const
       {
-          uint32_t i1 = lhs.nodeIdFrom;
-          uint32_t j1 = lhs.nodeIdTo;
+          uint32_t i1 = lhs.vertexIdFrom;
+          uint32_t j1 = lhs.vertexIdTo;
 
-          uint32_t i2 = rhs.nodeIdFrom;
-          uint32_t j2 = rhs.nodeIdTo;
+          uint32_t i2 = rhs.vertexIdFrom;
+          uint32_t j2 = rhs.vertexIdTo;
 
           if( i1 < i2 ) return true;
           else if( i1 > i2 ) return false;
@@ -180,7 +180,7 @@ private:
       }
     };
 
-    set< Connection, classcomp > connections;
+    set< Edge, classcomp > edges;
 };
 
 #endif // DAG_H
