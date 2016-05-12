@@ -70,7 +70,6 @@ int BinarySearchTree<T>::stepsTo( T value ) const
     struct distanceMeasurer
     {
         distanceMeasurer(T v): isFound(false), steps(0), value(v) { }
-        //void operator()( BinaryNode<T>* n ) { wxMessageOutput::Get()->Printf(" %d, ", n->getValue() ); }
         void operator()( BinaryNode<T>* n )
         {
             if( n->getValue() == value )
@@ -132,7 +131,6 @@ void BinarySearchTree<T>::print()
     struct Printer
     {
         Printer(){ }
-        //void operator()( BinaryNode<T>* n ) { wxMessageOutput::Get()->Printf(" %d, ", n->getValue() ); }
         void operator()( BinaryNode<T>* n ) { std::cout << " " << n->getValue() << ", "; }
     };
 

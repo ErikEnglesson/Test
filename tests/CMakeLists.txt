@@ -22,6 +22,7 @@ set( test_sources ../BinaryNode.cpp
                   ../BinarySearchTree.cpp
                   ../List.cpp
                   ../Node.cpp
+                  ../DAG.cpp
    )
 ####################################################   
 

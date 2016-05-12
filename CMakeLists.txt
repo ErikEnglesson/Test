@@ -11,6 +11,8 @@ add_executable(${PROJECT_NAME} ${SRC_LIST})
 set( CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -std=c++11" )
 file(GLOB SOURCES *.cpp)
 file(GLOB HEADERS *.h)
+file(GLOB SOURCES tests/*.cpp)
+file(GLOB SOURCES tests/*.h)
 
 target_link_libraries(${PROJECT_NAME} ${wxWidgets_LIBRARIES})
 
