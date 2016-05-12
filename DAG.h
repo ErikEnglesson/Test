@@ -11,8 +11,6 @@
 
 using namespace std;
 
-
-
 template<class T>
 class DAG
 {
@@ -26,17 +24,30 @@ public:
         return nodes.size()-1;
     }
 
-    /// Create a connection from nodeIdFrom to nodeIdTo with weight
-    void createConnection( uint32_t nodeIdFrom, uint32_t nodeIdTo, double weight )
+    /// Sets connection weight: nodeIdFrom -> nodeIdTo = weight
+    void setConnectionWeight( uint32_t nodeIdFrom, uint32_t nodeIdTo, double weight )
     {
-        connections.emplace( nodeIdFrom, nodeIdTo, weight );
+        assert( nodeIdFrom != nodeIdTo && "Connection between same node!" );
+        Connection c1( nodeIdFrom, nodeIdTo, weight );
+        auto iter = connections.find( c1 );
+        if( iter == connections.end() )
+        {
+            //Connection does not exist => create
+            connections.insert( c1 );
+        }
+        else
+        {
+            //Connection exists already so change weight
+            iter->weight = weight; //Changing const ref here
+        }
     }
 
-    /// Create a symmetric connection between two nodes and give the connection a weight
-    void createSymmetricConnection( uint32_t nodeIdFrom, uint32_t nodeIdTo, double weight )
+    /// Sets the connection weights between nodeIdFrom <-> nodeIdTo = weight
+    void setSymmetricConnectionWeights( uint32_t nodeIdFrom, uint32_t nodeIdTo, double weight )
     {
-        connections.emplace( nodeIdFrom, nodeIdTo, weight );
-        connections.emplace( nodeIdTo, nodeIdFrom, weight );
+        assert( nodeIdFrom != nodeIdTo && "Connection between same node!" );
+        setConnectionWeight( nodeIdFrom, nodeIdTo, weight );
+        setConnectionWeight( nodeIdTo, nodeIdFrom, weight );
     }
 
     /// Prints the connection matrix
@@ -54,6 +65,92 @@ public:
         std::cout << "Connections: \n" << m << std::endl;
     }
 
+    /// Returns 0 if no connection
+    double getConnectionWeight( uint32_t nodeIdFrom, uint32_t nodeIdTo ) const
+    {
+        //Comparison does not care about weight so does not matter what weight I use here
+        auto iter = connections.find( Connection( nodeIdFrom, nodeIdTo, 0.0 ) );
+        if( iter == connections.end() )
+        {
+            return 0.0;
+        }
+        else
+        {
+            return iter->weight;
+        }
+    }
+
+    uint32_t numConnections() const
+    {
+        return connections.size();
+    }
+
+    //Using "potensmetoden" and skipping weights
+    vector<double> calculatePageRankings( uint32_t nIterations ) const
+    {
+        //Set up matrix with connections with unit weights
+        vector<uint32_t> nConnectionsOut( nodes.size(), 0 );
+        for( auto iter = connections.begin(); iter != connections.end(); ++iter )
+        {
+            uint32_t row = iter->nodeIdFrom;
+            nConnectionsOut[row]++;
+        }
+
+        vector<double> lamdaWeights( nodes.size(), 0.0 );
+
+        for( uint32_t i = 0; i < nodes.size(); ++i )
+        {
+            uint32_t nOutgoingConnections = nConnectionsOut[i];
+            if( nOutgoingConnections == 0 )
+            {
+                lamdaWeights[i] = 0;
+            }
+            else
+            {
+                lamdaWeights[i] = 1.0 / double( nOutgoingConnections );
+            }
+        }
+
+
+        //Create H matrix
+        typedef Eigen::SparseMatrix<double> SparseMatrix;
+        SparseMatrix H( nodes.size(), nodes.size() );
+        for( auto iter = connections.begin(); iter != connections.end(); ++iter )
+        {
+            //Connection between nodeIdFrom -> nodeIdTo
+
+            //Each row specifies which nodes points TO the the node with id = row
+            uint32_t row = iter->nodeIdTo;
+            uint32_t col = iter->nodeIdFrom;
+
+            H.coeffRef( row, col ) = lamdaWeights[col];
+        }
+
+        std::cout << "H: \n" << H << std::endl;
+
+        //Initial guess
+        Eigen::VectorXd eigenVec( nodes.size() );
+
+        double value = 1.0 / double( nodes.size() );
+        for( uint32_t i = 0; i < nodes.size(); ++i )
+        {
+            eigenVec[i] = value;
+        }
+
+        for( uint32_t i = 0; i < nIterations; ++i )
+        {
+            eigenVec = H*eigenVec;
+        }
+
+        std::vector<double> result( nodes.size() );
+        for( uint32_t i = 0; i < nodes.size(); ++i )
+        {
+            result[i] = eigenVec[i];
+        }
+
+        return result;
+    }
+
 private:
 
     struct Connection
@@ -62,7 +159,7 @@ private:
 
         uint32_t nodeIdFrom;
         uint32_t nodeIdTo;
-        double weight;
+        mutable double weight; //Mutable so it can be changed in setConnectionWeight
     };
 
     vector<T> nodes;
